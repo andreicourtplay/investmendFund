@@ -19,20 +19,23 @@ st.set_page_config(
 
 
 # -----------------------------
-# Estilos (cards + look)
+# Styles
 # -----------------------------
 st.markdown(
     """
     <style>
-    .block-container { padding-top: 1.2rem; padding-bottom: 2rem; }
+    .block-container { padding-top: 1.2rem; padding-bottom: 2rem; max-width: 1400px; }
     .title { font-size: 2rem; font-weight: 800; letter-spacing: 0.5px; }
-    .subtitle { color: #9aa0a6; margin-top: -10px; }
+    .subtitle { color: #9aa0a6; margin-top: -10px; margin-bottom: 0.8rem; }
+    .section-spacer { height: 12px; }
+    div[data-testid="stHorizontalBlock"] { gap: 1rem; }
 
     .kpi-card {
         border: 1px solid rgba(255,255,255,0.08);
         background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
         border-radius: 18px;
         padding: 16px 18px;
+        min-height: 124px;
         box-shadow: 0 8px 26px rgba(0,0,0,0.25);
     }
     .kpi-label { font-size: 0.85rem; color: rgba(255,255,255,0.70); }
@@ -144,16 +147,16 @@ def normalize_df(df: pd.DataFrame, source_name: str) -> pd.DataFrame:
     else:
         df["Fecha Act"] = pd.NaT
 
-    # Asegura columnas numéricas
+    # Ensure numeric columns
     for col in NUMERIC_COLS:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # CloseTrade_BRUTO: fallback si viene vacío
+    # CloseTrade_BRUTO: fallback if missing
     if "CloseTrade_BRUTO" not in df.columns:
         df["CloseTrade_BRUTO"] = pd.NA
 
-    # Si CloseTrade_BRUTO está todo vacío, usa SumaDeCLOSE TRADE como proxy
+    # If CloseTrade_BRUTO is empty, use SumaDeCLOSE TRADE as proxy
     if df["CloseTrade_BRUTO"].isna().all() and "SumaDeCLOSE TRADE" in df.columns:
         df["CloseTrade_BRUTO"] = df["SumaDeCLOSE TRADE"]
 
@@ -177,7 +180,7 @@ def clean_all_df(df: pd.DataFrame) -> pd.DataFrame:
             out[col] = pd.to_numeric(out[col], errors="coerce")
 
     if "__source__" in out.columns:
-        # Evita exponer nombres de archivos en el dataset publicado.
+        # Avoid exposing source file names in the published dataset.
         out = out.drop(columns=["__source__"])
 
     if "Fondo" not in out.columns:
@@ -206,7 +209,7 @@ def read_any_file(file) -> pd.DataFrame:
             df = pd.read_csv(file, sep=";")
         return normalize_df(df, name)
 
-    raise ValueError(f"Formato no soportado: {suffix}")
+    raise ValueError(f"Unsupported file format: {suffix}")
 
 
 def parse_uploaded_files(uploaded_files) -> Tuple[pd.DataFrame, List[Tuple[str, str]]]:
@@ -283,6 +286,10 @@ def render_kpi(label: str, value, sub: str = ""):
     )
 
 
+def render_spacer():
+    st.markdown('<div class="section-spacer"></div>', unsafe_allow_html=True)
+
+
 # -----------------------------
 # Session state
 # -----------------------------
@@ -299,7 +306,7 @@ if flash_message:
 # -----------------------------
 st.markdown('<div class="title">📊 Funds Weekly Dashboard</div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="subtitle">Vista pública de datos ya publicados. Solo admin puede subir nuevos archivos.</div>',
+    '<div class="subtitle">Public dashboard with published data. Only admin can upload and publish new files.</div>',
     unsafe_allow_html=True,
 )
 
@@ -316,43 +323,43 @@ uploaded_files = []
 publish_clicked = False
 
 with st.sidebar:
-    st.header("🔐 Acceso")
+    st.header("🔐 Access")
     if admin_auth_enabled:
         if is_admin:
-            st.success("Modo admin activo")
-            if st.button("Salir de admin", use_container_width=True):
+            st.success("Admin mode enabled")
+            if st.button("Logout admin", use_container_width=True):
                 st.session_state["is_admin"] = False
                 st.rerun()
         else:
-            candidate = st.text_input("Password admin", type="password")
-            if st.button("Entrar como admin", use_container_width=True):
+            candidate = st.text_input("Admin password", type="password")
+            if st.button("Login as admin", use_container_width=True):
                 if candidate == admin_password:
                     st.session_state["is_admin"] = True
                     st.rerun()
                 else:
-                    st.error("Password incorrecta.")
+                    st.error("Incorrect password.")
     else:
         st.warning(
-            "No hay ADMIN_PASSWORD configurada. Cualquiera con el link puede publicar datos."
+            "No ADMIN_PASSWORD configured. Anyone with this link can publish data."
         )
 
     st.divider()
-    st.subheader("⚙️ Vista")
+    st.subheader("⚙️ View")
     n_weeks = st.slider(
-        "Semanas para gráfico", min_value=4, max_value=52, value=16, step=4
+        "Weeks shown in charts", min_value=4, max_value=52, value=16, step=4
     )
 
     if can_upload:
         st.divider()
-        st.subheader("📥 Publicar datos")
+        st.subheader("📥 Publish Data")
         uploaded_files = st.file_uploader(
-            "Sube uno o varios archivos (CSV / XLSX)",
+            "Upload one or more files (CSV / XLSX)",
             type=["csv", "xlsx", "xls"],
             accept_multiple_files=True,
             key="publish_uploader",
         )
         publish_clicked = st.button(
-            "Publicar dataset",
+            "Publish dataset",
             disabled=not uploaded_files,
             use_container_width=True,
         )
@@ -365,16 +372,16 @@ publish_errors: List[Tuple[str, str]] = []
 if can_upload and publish_clicked:
     fresh_df, publish_errors = parse_uploaded_files(uploaded_files)
     if fresh_df.empty:
-        st.error("No se pudo publicar: no hay filas válidas en los archivos.")
+        st.error("Publish failed: no valid rows were found in the uploaded files.")
     else:
         save_published_data(fresh_df, len(uploaded_files))
         st.session_state["flash_message"] = (
-            f"Datos publicados correctamente ({len(fresh_df)} filas)."
+            f"Data published successfully ({len(fresh_df)} rows)."
         )
         st.rerun()
 
 if publish_errors:
-    with st.expander("⚠️ Archivos con error al publicar"):
+    with st.expander("⚠️ Files with publish errors"):
         for name, err in publish_errors:
             st.write(f"**{name}** → {err}")
 
@@ -385,14 +392,14 @@ if publish_errors:
 all_df, published_meta = load_published_data()
 if all_df.empty:
     if can_upload:
-        st.info("Aún no hay datos publicados. Sube archivos y pulsa 'Publicar dataset'.")
+        st.info("No published dataset yet. Upload files and click 'Publish dataset'.")
     else:
-        st.info("No hay datos publicados todavía. Pide al administrador que publique.")
+        st.info("No published dataset yet. Ask the admin to publish data.")
     st.stop()
 
 latest_df = last_week_per_fund(all_df)
 if latest_df.empty:
-    st.error("No hay filas con 'Fecha Act' válida en el dataset publicado.")
+    st.error("No rows with valid 'Fecha Act' in the published dataset.")
     st.stop()
 
 
@@ -402,71 +409,82 @@ if latest_df.empty:
 funds = sorted(latest_df["Fondo"].unique().tolist())
 col_a, col_b, col_c = st.columns([2, 2, 2])
 with col_a:
-    selected_fund = st.selectbox("Fondo", funds, index=0)
+    selected_fund = st.selectbox("Fund", funds, index=0)
 with col_b:
     last_date = latest_df.loc[latest_df["Fondo"] == selected_fund, "Fecha Act"].iloc[0]
     st.markdown(
-        f"<span class='pill'>Última fecha: <b>{last_date.date().isoformat()}</b></span>",
+        f"<span class='pill'>Latest date: <b>{last_date.date().isoformat()}</b></span>",
         unsafe_allow_html=True,
     )
 with col_c:
     stamp = format_published_at(str(published_meta.get("published_at", "")))
-    st.markdown(
-        f"<span class='pill'>Publicado: <b>{stamp}</b></span>",
-        unsafe_allow_html=True,
-    )
+    if is_admin and published_meta.get("uploaded_files") is not None:
+        files_count = int(published_meta.get("uploaded_files", 0))
+        st.markdown(
+            f"<span class='pill'>Published: <b>{stamp}</b> · Files: <b>{files_count}</b></span>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            f"<span class='pill'>Published: <b>{stamp}</b></span>",
+            unsafe_allow_html=True,
+        )
 
 selected_latest = latest_df[latest_df["Fondo"] == selected_fund].iloc[0]
+render_spacer()
 
 
 # -----------------------------
 # KPI Grid (Cards)
 # -----------------------------
+st.markdown("### Key Metrics")
 k1, k2, k3 = st.columns(3)
 with k1:
     render_kpi(
         "Beginner NAV",
         format_money(selected_latest.get("SumaDeBEGINNER NAV")),
-        "Valor inicial de la semana",
+        "Starting value for the week",
     )
 with k2:
     render_kpi(
         "Net Liquid Value",
         format_money(selected_latest.get("SumaDeNET LIQUID VALUE")),
-        "Valor liquidativo neto",
+        "Net asset value",
     )
 with k3:
     render_kpi(
         "Cash NAV",
         format_money(selected_latest.get("SumaDeCASH NAV")),
-        "Caja / NAV en efectivo",
+        "Cash / NAV on hand",
     )
 
+render_spacer()
 k4, k5, k6 = st.columns(3)
 with k4:
     render_kpi(
-        "Suma Close Trade",
+        "Close Trade Sum",
         format_money(selected_latest.get("SumaDeCLOSE TRADE")),
-        "Close trades (semana)",
+        "Weekly close trades",
     )
 with k5:
     render_kpi(
-        "Free Cash Disponible",
+        "Available Free Cash",
         format_money(selected_latest.get("SumaDeFREE CASH")),
-        "Efectivo libre",
+        "Unallocated cash",
     )
 with k6:
     render_kpi(
-        "Close Trade Bruto",
+        "Close Trade Gross",
         format_money(selected_latest.get("CloseTrade_BRUTO")),
         "Gross close trade performance (proxy)",
     )
 
+st.divider()
 
 # -----------------------------
-# Tabla última semana
+# Latest week table
 # -----------------------------
-st.markdown("### 🧾 Última semana (detalle)")
+st.markdown("### 🧾 Latest Week (Detailed View)")
 table_cols = [
     "Fondo",
     "Week",
@@ -484,20 +502,40 @@ table_cols = [
 existing = [col for col in table_cols if col in latest_df.columns]
 pretty = latest_df.copy()
 
+if "Fecha Act" in pretty.columns:
+    pretty["Fecha Act"] = pd.to_datetime(pretty["Fecha Act"], errors="coerce").dt.strftime(
+        "%Y-%m-%d"
+    )
+
 for col in [x for x in existing if x in NUMERIC_COLS]:
     pretty[col] = pretty[col].apply(lambda v: f"{v:,.0f}" if pd.notna(v) else "")
 
+display_names = {
+    "Fondo": "Fund",
+    "Fecha Act": "Date",
+    "SumaDeBEGINNER NAV": "Beginner NAV",
+    "SumaDeCLOSE TRADE": "Close Trade Sum",
+    "CloseTrade_BRUTO": "Close Trade Gross",
+    "SumaDeNET LIQUID VALUE": "Net Liquid Value",
+    "SumaDeCASH NAV": "Cash NAV",
+    "SumaDeFREE CASH": "Free Cash",
+    "SumaDeOPEN CASH FLOW": "Open Cash Flow",
+    "SumaDeTRADING": "Trading",
+    "SumaDeLIQUIDACION": "Liquidation",
+}
+
 st.dataframe(
-    pretty[existing].sort_values("Fondo"),
+    pretty[existing].sort_values("Fondo").rename(columns=display_names),
     use_container_width=True,
     hide_index=True,
 )
 
+st.divider()
 
 # -----------------------------
-# Evolución últimas N semanas (gráficos)
+# Last N weeks trends (charts)
 # -----------------------------
-st.markdown("### 📈 Evolución (últimas semanas)")
+st.markdown("### 📈 Trends (Last Weeks)")
 df_f = (
     all_df[all_df["Fondo"] == selected_fund]
     .dropna(subset=["Fecha Act"])
@@ -512,7 +550,7 @@ with c1:
     if "SumaDeNET LIQUID VALUE" in df_f.columns:
         st.line_chart(df_f.set_index("Fecha Act")["SumaDeNET LIQUID VALUE"])
     else:
-        st.info("No existe columna 'SumaDeNET LIQUID VALUE' en este fondo.")
+        st.info("Column 'SumaDeNET LIQUID VALUE' is not available for this fund.")
 
 with c2:
     st.markdown("**Cash / Free Cash**")
@@ -524,8 +562,8 @@ with c2:
     if cols:
         st.line_chart(df_f.set_index("Fecha Act")[cols])
     else:
-        st.info("No existen columnas de Cash para este fondo.")
+        st.info("Cash columns are not available for this fund.")
 
 st.caption(
-    "Tip: configura ADMIN_PASSWORD para que solo tú puedas publicar y compartir el link en modo lectura."
+    "Tip: configure ADMIN_PASSWORD so only you can publish data while others use read-only view."
 )
