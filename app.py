@@ -353,7 +353,7 @@ if flash_message:
 # -----------------------------
 st.markdown('<div class="title">📊 Investmend Funds Nav</div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="subtitle">Public dashboard with published data. Only admin can upload and publish new files.</div>',
+    '<div class="subtitle">Live public view of published fund NAV data.</div>',
     unsafe_allow_html=True,
 )
 
@@ -391,7 +391,7 @@ with st.sidebar:
             st.caption("Admin login not configured.")
         st.divider()
 
-    st.subheader("⚙️ View")
+    st.subheader("⚙️ Dashboard View")
     n_weeks = st.slider(
         "Weeks shown in charts", min_value=4, max_value=52, value=16, step=4
     )
@@ -457,11 +457,11 @@ if latest_df.empty:
 funds = sorted(latest_df["Fondo"].unique().tolist())
 col_a, col_b, col_c = st.columns([2, 2, 2])
 with col_a:
-    selected_fund = st.selectbox("Fund", funds, index=0)
+    selected_fund = st.selectbox("Choose fund", funds, index=0)
 with col_b:
     last_date = latest_df.loc[latest_df["Fondo"] == selected_fund, "Fecha Act"].iloc[0]
     st.markdown(
-        f"<span class='pill'>Latest date: <b>{last_date.date().isoformat()}</b></span>",
+        f"<span class='pill'>As of: <b>{last_date.date().isoformat()}</b></span>",
         unsafe_allow_html=True,
     )
 with col_c:
@@ -469,12 +469,12 @@ with col_c:
     if is_admin and published_meta.get("uploaded_files") is not None:
         files_count = int(published_meta.get("uploaded_files", 0))
         st.markdown(
-            f"<span class='pill'>Published: <b>{stamp}</b> · Files: <b>{files_count}</b></span>",
+            f"<span class='pill'>Updated: <b>{stamp}</b> · Files: <b>{files_count}</b></span>",
             unsafe_allow_html=True,
         )
     else:
         st.markdown(
-            f"<span class='pill'>Published: <b>{stamp}</b></span>",
+            f"<span class='pill'>Updated: <b>{stamp}</b></span>",
             unsafe_allow_html=True,
         )
 
@@ -485,13 +485,13 @@ render_spacer()
 # -----------------------------
 # KPI Grid (Cards)
 # -----------------------------
-st.markdown("### Key Metrics")
+st.markdown("### Fund Snapshot")
 k1, k2, k3 = st.columns(3)
 with k1:
     render_kpi(
-        "Beginner NAV",
+        "Starting NAV",
         format_money(selected_latest.get("SumaDeBEGINNER NAV")),
-        "Starting value for the week",
+        "Initial value for the selected week",
     )
 with k2:
     render_kpi(
@@ -501,18 +501,18 @@ with k2:
     )
 with k3:
     render_kpi(
-        "Cash NAV",
+        "Cash Position",
         format_money(selected_latest.get("SumaDeCASH NAV")),
-        "Cash / NAV on hand",
+        "Cash / NAV currently on hand",
     )
 
 render_spacer()
 k4, k5, k6 = st.columns(3)
 with k4:
     render_kpi(
-        "Close Trade Sum",
+        "Close Trades (Sum)",
         format_money(selected_latest.get("SumaDeCLOSE TRADE")),
-        "Weekly close trades",
+        "Total closed trades for the week",
     )
 with k5:
     render_kpi(
@@ -522,7 +522,7 @@ with k5:
     )
 with k6:
     render_kpi(
-        "Close Trade Gross",
+        "Close Trades (Gross)",
         format_money(selected_latest.get("CloseTrade_BRUTO")),
         "Gross close trade performance (proxy)",
     )
@@ -532,7 +532,7 @@ st.divider()
 # -----------------------------
 # Latest week table
 # -----------------------------
-st.markdown("### 🧾 Latest Week (Detailed View)")
+st.markdown("### 🧾 Latest Weekly Detail")
 table_cols = [
     "Fondo",
     "Week",
@@ -561,9 +561,9 @@ for col in [x for x in existing if x in NUMERIC_COLS]:
 display_names = {
     "Fondo": "Fund",
     "Fecha Act": "Date",
-    "SumaDeBEGINNER NAV": "Beginner NAV",
-    "SumaDeCLOSE TRADE": "Close Trade Sum",
-    "CloseTrade_BRUTO": "Close Trade Gross",
+    "SumaDeBEGINNER NAV": "Starting NAV",
+    "SumaDeCLOSE TRADE": "Close Trades (Sum)",
+    "CloseTrade_BRUTO": "Close Trades (Gross)",
     "SumaDeNET LIQUID VALUE": "Net Liquid Value",
     "SumaDeCASH NAV": "Cash NAV",
     "SumaDeFREE CASH": "Free Cash",
@@ -583,7 +583,7 @@ st.divider()
 # -----------------------------
 # Last N weeks trends (charts)
 # -----------------------------
-st.markdown("### 📈 Trends (Last Weeks)")
+st.markdown("### 📈 Recent Trends")
 df_f = (
     all_df[all_df["Fondo"] == selected_fund]
     .dropna(subset=["Fecha Act"])
@@ -601,7 +601,7 @@ with c1:
         st.info("Column 'SumaDeNET LIQUID VALUE' is not available for this fund.")
 
 with c2:
-    st.markdown("**Cash / Free Cash**")
+    st.markdown("**Cash vs Free Cash**")
     cols = []
     if "SumaDeCASH NAV" in df_f.columns:
         cols.append("SumaDeCASH NAV")
@@ -611,7 +611,3 @@ with c2:
         st.line_chart(df_f.set_index("Fecha Act")[cols])
     else:
         st.info("Cash columns are not available for this fund.")
-
-st.caption(
-    "Tip: configure ADMIN_PASSWORD so only you can publish data while others use read-only view."
-)
