@@ -50,6 +50,14 @@ st.markdown(
         background: rgba(255,255,255,0.04);
         color: rgba(255,255,255,0.80);
     }
+    .pill-wrap {
+        margin-top: 1.9rem;
+    }
+    @media (max-width: 900px) {
+        .pill-wrap {
+            margin-top: 0.35rem;
+        }
+    }
     .empty-state {
         margin-top: 1.2rem;
         border: 1px solid rgba(255,255,255,0.10);
@@ -283,12 +291,17 @@ def last_week_per_fund(all_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def render_kpi(label: str, value, sub: str = ""):
+    sub_html = (
+        f'<div class="kpi-sub">{sub}</div>'
+        if isinstance(sub, str) and sub.strip()
+        else ""
+    )
     st.markdown(
         f"""
         <div class="kpi-card">
             <div class="kpi-label">{label}</div>
             <div class="kpi-value">{value}</div>
-            <div class="kpi-sub">{sub}</div>
+            {sub_html}
         </div>
         """,
         unsafe_allow_html=True,
@@ -461,7 +474,7 @@ with col_a:
 with col_b:
     last_date = latest_df.loc[latest_df["Fondo"] == selected_fund, "Fecha Act"].iloc[0]
     st.markdown(
-        f"<span class='pill'>As of: <b>{last_date.date().isoformat()}</b></span>",
+        f"<div class='pill-wrap'><span class='pill'>As of: <b>{last_date.date().isoformat()}</b></span></div>",
         unsafe_allow_html=True,
     )
 with col_c:
@@ -469,12 +482,12 @@ with col_c:
     if is_admin and published_meta.get("uploaded_files") is not None:
         files_count = int(published_meta.get("uploaded_files", 0))
         st.markdown(
-            f"<span class='pill'>Updated: <b>{stamp}</b> · Files: <b>{files_count}</b></span>",
+            f"<div class='pill-wrap'><span class='pill'>Updated: <b>{stamp}</b> · Files: <b>{files_count}</b></span></div>",
             unsafe_allow_html=True,
         )
     else:
         st.markdown(
-            f"<span class='pill'>Updated: <b>{stamp}</b></span>",
+            f"<div class='pill-wrap'><span class='pill'>Updated: <b>{stamp}</b></span></div>",
             unsafe_allow_html=True,
         )
 
@@ -491,19 +504,16 @@ with k1:
     render_kpi(
         "Starting NAV",
         format_money(selected_latest.get("SumaDeBEGINNER NAV")),
-        "Initial value for the selected week",
     )
 with k2:
     render_kpi(
         "Net Liquid Value",
         format_money(selected_latest.get("SumaDeNET LIQUID VALUE")),
-        "Net asset value",
     )
 with k3:
     render_kpi(
         "Cash Position",
         format_money(selected_latest.get("SumaDeCASH NAV")),
-        "Cash / NAV currently on hand",
     )
 
 render_spacer()
@@ -512,19 +522,16 @@ with k4:
     render_kpi(
         "Close Trades (Sum)",
         format_money(selected_latest.get("SumaDeCLOSE TRADE")),
-        "Total closed trades for the week",
     )
 with k5:
     render_kpi(
         "Available Free Cash",
         format_money(selected_latest.get("SumaDeFREE CASH")),
-        "Unallocated cash",
     )
 with k6:
     render_kpi(
         "Close Trades (Gross)",
         format_money(selected_latest.get("CloseTrade_BRUTO")),
-        "Gross close trade performance (proxy)",
     )
 
 st.divider()
