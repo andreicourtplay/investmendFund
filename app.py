@@ -299,7 +299,15 @@ def render_spacer():
     st.markdown('<div class="section-spacer"></div>', unsafe_allow_html=True)
 
 
-def render_empty_state(can_upload: bool, admin_auth_enabled: bool):
+def is_truthy_param(value) -> bool:
+    if isinstance(value, (list, tuple)):
+        value = value[0] if value else ""
+    return str(value).strip().lower() in {"1", "true", "yes", "on"}
+
+
+def render_empty_state(
+    can_upload: bool, admin_auth_enabled: bool, admin_panel_enabled: bool
+):
     if can_upload:
         title = "No published data yet"
         subtitle = (
@@ -323,7 +331,7 @@ def render_empty_state(can_upload: bool, admin_auth_enabled: bool):
         unsafe_allow_html=True,
     )
 
-    if not admin_auth_enabled:
+    if admin_panel_enabled and not admin_auth_enabled:
         st.info(
             "Admin login is not configured yet. In Streamlit Cloud go to Manage app -> Settings -> Secrets and add ADMIN_PASSWORD."
         )
@@ -356,31 +364,33 @@ st.markdown(
 admin_password = get_admin_password()
 admin_auth_enabled = bool(admin_password)
 is_admin = st.session_state.get("is_admin", False)
-can_upload = is_admin
+admin_panel_enabled = is_truthy_param(st.query_params.get("admin", "0"))
+can_upload = is_admin and admin_panel_enabled
 
 uploaded_files = []
 publish_clicked = False
 
 with st.sidebar:
-    st.header("🔐 Access")
-    if admin_auth_enabled:
-        if is_admin:
-            st.success("Admin mode enabled")
-            if st.button("Logout admin", use_container_width=True):
-                st.session_state["is_admin"] = False
-                st.rerun()
-        else:
-            candidate = st.text_input("Admin password", type="password")
-            if st.button("Login as admin", use_container_width=True):
-                if candidate == admin_password:
-                    st.session_state["is_admin"] = True
+    if admin_panel_enabled:
+        st.header("🔐 Access")
+        if admin_auth_enabled:
+            if is_admin:
+                st.success("Admin mode enabled")
+                if st.button("Logout admin", use_container_width=True):
+                    st.session_state["is_admin"] = False
                     st.rerun()
-                else:
-                    st.error("Incorrect password.")
-    else:
-        st.caption("Admin login not configured.")
+            else:
+                candidate = st.text_input("Admin password", type="password")
+                if st.button("Login as admin", use_container_width=True):
+                    if candidate == admin_password:
+                        st.session_state["is_admin"] = True
+                        st.rerun()
+                    else:
+                        st.error("Incorrect password.")
+        else:
+            st.caption("Admin login not configured.")
+        st.divider()
 
-    st.divider()
     st.subheader("⚙️ View")
     n_weeks = st.slider(
         "Weeks shown in charts", min_value=4, max_value=52, value=16, step=4
@@ -428,7 +438,11 @@ if publish_errors:
 # -----------------------------
 all_df, published_meta = load_published_data()
 if all_df.empty:
-    render_empty_state(can_upload=can_upload, admin_auth_enabled=admin_auth_enabled)
+    render_empty_state(
+        can_upload=can_upload,
+        admin_auth_enabled=admin_auth_enabled,
+        admin_panel_enabled=admin_panel_enabled,
+    )
     st.stop()
 
 latest_df = last_week_per_fund(all_df)
