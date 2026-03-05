@@ -25,30 +25,54 @@ st.markdown(
     """
     <style>
     .block-container { padding-top: 2.2rem; padding-bottom: 2rem; max-width: 1400px; }
-    .title { font-size: 2rem; font-weight: 800; letter-spacing: 0.5px; }
-    .subtitle { color: #9aa0a6; margin-top: 0; margin-bottom: 1rem; }
+    .title {
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        color: var(--text-color);
+    }
+    .subtitle {
+        color: var(--text-color);
+        opacity: 0.78;
+        margin-top: 0;
+        margin-bottom: 1rem;
+    }
     .section-spacer { height: 12px; }
     div[data-testid="stHorizontalBlock"] { gap: 1rem; }
 
     .kpi-card {
-        border: 1px solid rgba(255,255,255,0.08);
-        background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+        border: 1px solid rgba(128,128,128,0.22);
+        background: var(--secondary-background-color);
         border-radius: 18px;
         padding: 16px 18px;
         min-height: 124px;
         box-shadow: 0 8px 26px rgba(0,0,0,0.25);
     }
-    .kpi-label { font-size: 0.85rem; color: rgba(255,255,255,0.70); }
-    .kpi-value { font-size: 1.65rem; font-weight: 800; margin-top: 6px; }
-    .kpi-sub { font-size: 0.80rem; color: rgba(255,255,255,0.55); margin-top: 6px; }
+    .kpi-label {
+        font-size: 0.85rem;
+        color: var(--text-color);
+        opacity: 0.72;
+    }
+    .kpi-value {
+        font-size: 1.65rem;
+        font-weight: 800;
+        margin-top: 6px;
+        color: var(--text-color);
+    }
+    .kpi-sub {
+        font-size: 0.80rem;
+        color: var(--text-color);
+        opacity: 0.62;
+        margin-top: 6px;
+    }
     .pill {
         display:inline-block;
         padding: 6px 10px;
         border-radius: 999px;
         font-size: 0.8rem;
-        border: 1px solid rgba(255,255,255,0.12);
-        background: rgba(255,255,255,0.04);
-        color: rgba(255,255,255,0.80);
+        border: 1px solid rgba(128,128,128,0.28);
+        background: var(--secondary-background-color);
+        color: var(--text-color);
     }
     .pill-wrap {
         margin-top: 1.9rem;
@@ -60,13 +84,23 @@ st.markdown(
     }
     .empty-state {
         margin-top: 1.2rem;
-        border: 1px solid rgba(255,255,255,0.10);
+        border: 1px solid rgba(128,128,128,0.26);
         border-radius: 18px;
         padding: 22px;
-        background: linear-gradient(160deg, rgba(35,86,138,0.18), rgba(14,22,38,0.35));
+        background: var(--secondary-background-color);
     }
-    .empty-title { font-size: 1.2rem; font-weight: 700; margin: 0 0 8px; }
-    .empty-sub { color: rgba(255,255,255,0.76); margin: 0; line-height: 1.45; }
+    .empty-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin: 0 0 8px;
+        color: var(--text-color);
+    }
+    .empty-sub {
+        color: var(--text-color);
+        opacity: 0.76;
+        margin: 0;
+        line-height: 1.45;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -107,6 +141,10 @@ NUMERIC_COLS = [
     "CloseTrade_BRUTO",
 ]
 
+FUND_ALIASES = {
+    "INS": "INSTITUTE",
+}
+
 
 # -----------------------------
 # Helpers
@@ -138,6 +176,11 @@ def format_published_at(iso_value: str) -> str:
     if pd.isna(dt):
         return str(iso_value)
     return dt.strftime("%Y-%m-%d %H:%M UTC")
+
+
+def normalize_fund_name(value) -> str:
+    raw = str(value).strip().upper()
+    return FUND_ALIASES.get(raw, raw)
 
 
 def normalize_df(df: pd.DataFrame, source_name: str) -> pd.DataFrame:
@@ -204,7 +247,7 @@ def clean_all_df(df: pd.DataFrame) -> pd.DataFrame:
         out["Fondo"] = "UNKNOWN"
 
     out = out.dropna(subset=["Fondo"])
-    out["Fondo"] = out["Fondo"].astype(str).str.strip()
+    out["Fondo"] = out["Fondo"].apply(normalize_fund_name)
     out = out[out["Fondo"] != ""]
 
     return out
