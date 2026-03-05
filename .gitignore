@@ -1,0 +1,14 @@
+.pycache/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+.venv/
+venv/
+.rustup/
+
+.streamlit/secrets.toml
+
+data/
+*.log
