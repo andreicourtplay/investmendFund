@@ -24,9 +24,9 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    .block-container { padding-top: 1.2rem; padding-bottom: 2rem; max-width: 1400px; }
+    .block-container { padding-top: 2.2rem; padding-bottom: 2rem; max-width: 1400px; }
     .title { font-size: 2rem; font-weight: 800; letter-spacing: 0.5px; }
-    .subtitle { color: #9aa0a6; margin-top: -10px; margin-bottom: 0.8rem; }
+    .subtitle { color: #9aa0a6; margin-top: 0; margin-bottom: 1rem; }
     .section-spacer { height: 12px; }
     div[data-testid="stHorizontalBlock"] { gap: 1rem; }
 
@@ -50,6 +50,15 @@ st.markdown(
         background: rgba(255,255,255,0.04);
         color: rgba(255,255,255,0.80);
     }
+    .empty-state {
+        margin-top: 1.2rem;
+        border: 1px solid rgba(255,255,255,0.10);
+        border-radius: 18px;
+        padding: 22px;
+        background: linear-gradient(160deg, rgba(35,86,138,0.18), rgba(14,22,38,0.35));
+    }
+    .empty-title { font-size: 1.2rem; font-weight: 700; margin: 0 0 8px; }
+    .empty-sub { color: rgba(255,255,255,0.76); margin: 0; line-height: 1.45; }
     </style>
     """,
     unsafe_allow_html=True,
@@ -290,6 +299,36 @@ def render_spacer():
     st.markdown('<div class="section-spacer"></div>', unsafe_allow_html=True)
 
 
+def render_empty_state(can_upload: bool, admin_auth_enabled: bool):
+    if can_upload:
+        title = "No published data yet"
+        subtitle = (
+            "Upload your CSV/XLSX files from the sidebar and click 'Publish dataset'. "
+            "After publishing, viewers will see the dashboard automatically."
+        )
+    else:
+        title = "No published data yet"
+        subtitle = (
+            "This dashboard is in read-only mode for viewers. "
+            "Ask the admin to publish a dataset first."
+        )
+
+    st.markdown(
+        f"""
+        <div class="empty-state">
+            <div class="empty-title">📭 {title}</div>
+            <p class="empty-sub">{subtitle}</p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if not admin_auth_enabled:
+        st.info(
+            "Admin login is not configured yet. In Streamlit Cloud go to Manage app -> Settings -> Secrets and add ADMIN_PASSWORD."
+        )
+
+
 # -----------------------------
 # Session state
 # -----------------------------
@@ -317,7 +356,7 @@ st.markdown(
 admin_password = get_admin_password()
 admin_auth_enabled = bool(admin_password)
 is_admin = st.session_state.get("is_admin", False)
-can_upload = is_admin or not admin_auth_enabled
+can_upload = is_admin
 
 uploaded_files = []
 publish_clicked = False
@@ -339,9 +378,7 @@ with st.sidebar:
                 else:
                     st.error("Incorrect password.")
     else:
-        st.warning(
-            "No ADMIN_PASSWORD configured. Anyone with this link can publish data."
-        )
+        st.caption("Admin login not configured.")
 
     st.divider()
     st.subheader("⚙️ View")
@@ -391,10 +428,7 @@ if publish_errors:
 # -----------------------------
 all_df, published_meta = load_published_data()
 if all_df.empty:
-    if can_upload:
-        st.info("No published dataset yet. Upload files and click 'Publish dataset'.")
-    else:
-        st.info("No published dataset yet. Ask the admin to publish data.")
+    render_empty_state(can_upload=can_upload, admin_auth_enabled=admin_auth_enabled)
     st.stop()
 
 latest_df = last_week_per_fund(all_df)
