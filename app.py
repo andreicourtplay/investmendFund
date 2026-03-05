@@ -12,7 +12,7 @@ import streamlit as st
 # Config
 # -----------------------------
 st.set_page_config(
-    page_title="Funds Weekly Dashboard",
+    page_title="Investmend Funds Nav",
     page_icon="📊",
     layout="wide",
 )
@@ -343,7 +343,7 @@ if flash_message:
 # -----------------------------
 # UI - Header
 # -----------------------------
-st.markdown('<div class="title">📊 Funds Weekly Dashboard</div>', unsafe_allow_html=True)
+st.markdown('<div class="title">📊 Investmend Funds Nav</div>', unsafe_allow_html=True)
 st.markdown(
     '<div class="subtitle">Public dashboard with published data. Only admin can upload and publish new files.</div>',
     unsafe_allow_html=True,
